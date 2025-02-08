@@ -1,0 +1,7 @@
+Summary for Sneha's work experience
+- Sneha has 2.7 years of work experience at companies like John Deere and Accenture
+- She has worked on technologies like Java and python using SQL databases.
+- She is primarily a backend software engineer
+- She is the Comms shadow for Kubernetes version 1.33
+- She graduated from University at Buffalo - SUNY with master's in Computer Science, specializing in AI
+
