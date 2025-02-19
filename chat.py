@@ -5,7 +5,7 @@ import json  # To handle the multiple JSON objects
 st.title("LLM-chatbot")
 
 # Define the URL for Ollama's local server
-OLLAMA_SERVER_URL = "http://localhost:11434/api/generate"  # Replace with the correct URL if necessary
+OLLAMA_SERVER_URL = st.secrets["ollama"]["server_url"] # Replace with the correct URL if necessary
 
 if "llama_model" not in st.session_state:
     st.session_state["llama_model"] = "llama3.2"  # Use "llama3.2" as the model name
