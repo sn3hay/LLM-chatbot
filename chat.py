@@ -1,76 +1,37 @@
 import streamlit as st
-import requests  # This will be used to send requests to the Ollama API
-import json  # To handle the multiple JSON objects
+from data_handler import extract_text_from_pdf, store_text_in_chroma, retrieve_relevant_text
+from ollama_query import query_ollama
 
-st.title("LLM-chatbot")
+st.title("LLM RAG Chatbot")
 
-# Define the URL for Ollama's local server
-OLLAMA_SERVER_URL = st.secrets["ollama"]["server_url"] # Replace with the correct URL if necessary
+# Load and index the PDF on startup
+try:
+    pdf_text = extract_text_from_pdf()
+    store_text_in_chroma(pdf_text)
+    st.success("PDF loaded from directory and indexed successfully!")
+except FileNotFoundError as e:
+    st.error(str(e))
 
-if "llama_model" not in st.session_state:
-    st.session_state["llama_model"] = "llama3.2"  # Use "llama3.2" as the model name
-
+# Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display the chat history
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Input field for the user to enter their message
-if prompt := st.chat_input("What is up?"):
-    # Add the user's message to the session state
+# Chat Input
+if prompt := st.chat_input("Ask something about the PDF..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Display user's message in the chat
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # Retrieve relevant text from ChromaDB
+    relevant_context = retrieve_relevant_text(prompt)
 
-    # Prepare the payload for the request to Ollama's server
-    payload = {
-        "model": st.session_state["llama_model"],  # The model you want to use, e.g., "llama3.2"
-        "prompt": prompt,
-        "messages": [
-            {"role": m["role"], "content": m["content"]}
-            for m in st.session_state.messages
-        ]
-    }
+    # Query Ollama with retrieved context
+    assistant_response = query_ollama(prompt, relevant_context)
 
-    # Send the request to the Ollama server to get a response from the model
-    try:
-        response = requests.post(OLLAMA_SERVER_URL, json=payload)
-        response.raise_for_status()  # Raise an exception for HTTP error responses
-
-        # Debug: print the raw response
-        st.write("Raw response:", response.text)  # This will show the raw response content
-
-        # Split the response into multiple JSON objects
-        response_parts = response.text.strip().split('\n')
-
-        # Initialize an empty string to collect the final response
-        assistant_response = ""
-
-        # Parse and combine each part of the response
-        for part in response_parts:
-            try:
-                data = json.loads(part)
-                assistant_response += data.get("response", "")
-                if data.get("done"):
-                    break  # Stop when the response is complete
-            except json.JSONDecodeError:
-                st.write(f"Error parsing part of the response: {part}")
-
-    except requests.exceptions.RequestException as e:
-        # Handle other HTTP-related errors (e.g., connection issues)
-        assistant_response = f"Error: {e}"
-    except requests.exceptions.JSONDecodeError:
-        # Handle case where the response is not valid JSON
-        assistant_response = f"Error: Invalid JSON response from the server. Response: {response.text}"
-
-    # Display the assistant's response
     with st.chat_message("assistant"):
         st.markdown(assistant_response)
 
-    # Add the assistant's message to the session state
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
